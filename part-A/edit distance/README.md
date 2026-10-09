@@ -131,7 +131,3 @@ For strings of length up to 5000, that is about `25 * 10^6` cell computations, w
 
 ---
 
-## Possible Optimizations
-
-- **Use `int` instead of `long`.** The edit distance can never exceed `max(n, m)`, so `int` is always enough. This halves the memory.
-- **Use two rolling rows.** Each row only depends on the previous row, so keeping just two rows reduces the space to **O(min(n, m))** with the same O(n · m) time. The trade-off is that you can no longer reconstruct the actual sequence of operations from the table.
