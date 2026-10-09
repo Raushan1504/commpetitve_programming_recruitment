@@ -1,93 +1,106 @@
-# Factory Machines (Binary Search on the Answer)
+# Edit Distance (Dynamic Programming)
 
 ## Problem
 
-A factory has `n` machines. Machine `i` takes `k_i` seconds to make one product, and all machines work **in parallel** and continuously. Find the **minimum time** needed to make at least `t` products in total.
+Given two strings `s1` and `s2`, find the **minimum number of operations** needed to turn `s1` into `s2`. Each operation can be one of:
+
+- **Insert** a character
+- **Delete** a character
+- **Replace** a character with another one
 
 **Input**
 ```
-n t
-k1 k2 ... kn
+s1
+s2
 ```
 
 **Output**
-A single integer: the minimum number of seconds needed to make at least `t` products.
+A single integer: the minimum number of operations.
 
 **Example**
 
 ```
-3 7
-3 2 5
+LOVE
+MOVIE
 ```
-Output: `8`
+Output: `2`
 
-After 8 seconds the machines have made `8/3 + 8/2 + 8/5 = 2 + 4 + 1 = 7` products. After 7 seconds they have only made `2 + 3 + 1 = 6`, which is not enough.
+One optimal sequence: `LOVE -> MOVE` (replace `L` with `M`), then `MOVE -> MOVIE` (insert `I`).
 
 ---
 
 ## Key Idea
 
-Instead of trying to compute the answer directly, we ask a yes/no question:
+This is a classic **2D dynamic programming** problem (the Levenshtein distance).
 
-> **"Can the machines make at least `t` products within `T` seconds?"**
-
-In `T` seconds, machine `i` makes `floor(T / k_i)` products, so the total is:
+Define:
 
 ```
-total(T) = floor(T / k_1) + floor(T / k_2) + ... + floor(T / k_n)
+dp[i][j] = minimum operations to turn the first i characters of s1
+           into the first j characters of s2
 ```
 
-This function is **monotonic**: giving the machines more time can never produce fewer products. So the answers to our question look like this as `T` grows:
+The answer is `dp[n][m]`, where `n = s1.length()` and `m = s2.length()`.
+
+We build the answer from smaller prefixes. To compute `dp[i][j]`, look at the last characters `s1[i-1]` and `s2[j-1]`:
+
+**Case 1: the characters are equal.** No operation is needed for them, so we inherit the cost of the shorter prefixes:
 
 ```
-T:       1   2   3  ...  7    8    9   ...
-Enough?  No  No  No ...  No   Yes  Yes ...
+dp[i][j] = dp[i-1][j-1]
 ```
 
-There is a single point where "No" flips to "Yes", and we want that first "Yes". Whenever answers flip exactly once like this, we can find the flip point with **binary search on the answer**.
+**Case 2: the characters differ.** We must spend one operation, and we pick the cheapest of three choices:
+
+| Operation | Meaning | Previous state |
+|-----------|---------|----------------|
+| Delete | Delete `s1[i-1]`, then match the first `i-1` chars of `s1` with the first `j` chars of `s2` | `dp[i-1][j]` |
+| Insert | Insert `s2[j-1]` at the end of `s1`, so the first `i` chars of `s1` only need to match the first `j-1` chars of `s2` | `dp[i][j-1]` |
+| Replace | Replace `s1[i-1]` with `s2[j-1]`, then match the first `i-1` and `j-1` chars | `dp[i-1][j-1]` |
+
+```
+dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
+```
+
+### Base cases
+
+- `dp[i][0] = i`: turning the first `i` characters of `s1` into an empty string takes `i` deletions.
+- `dp[0][j] = j`: turning an empty string into the first `j` characters of `s2` takes `j` insertions.
 
 ---
 
 ## How the Code Works
 
-### `isPossible(machines, time, target)`
+1. Create a table `arr` of size `(n + 1) x (m + 1)`.
+2. Fill the first column with `0, 1, 2, ..., n` and the first row with `0, 1, 2, ..., m` (the base cases).
+3. Fill the rest of the table row by row. Each cell only depends on cells above it, to its left and diagonally up-left, which are already computed by the time we reach it.
+4. Return `arr[n][m]`.
 
-Adds up `time / machineTime` for every machine and returns `true` as soon as the running total reaches `target`.
-
-The early return (`if (TotalProducts >= target) return true;`) has two benefits:
-
-- It saves work, since we can stop scanning machines once we have enough.
-- It **prevents overflow**: the running total is always below `target` (at most about `10^9`) before each addition, and each term is at most about `10^18`, so the sum never exceeds the range of `long`.
-
-### `search(machines, low, high, target)`
-
-A standard binary search for the **smallest** `time` where `isPossible` is `true`:
-
-- `mid = low + (high - low) / 2` (written this way to avoid overflow).
-- If `mid` works, the answer is `mid` or something smaller, so set `high = mid` (keep `mid` as a candidate).
-- If `mid` does not work, the answer must be larger, so set `low = mid + 1`.
-- When `low == high`, the range has shrunk to a single value, which is the minimum valid time.
-
-### Search range
-
-- `low = 1`: at least one second is needed since `t >= 1`.
-- `high = maxTime * target`: the slowest machine, working alone, makes `t` products in `maxTime * t` seconds. The real answer can't be worse than that, because the other machines only help.
+The `+ 1` in the table size is what makes room for the "empty prefix" row and column.
 
 ---
 
 ## Walkthrough
 
-For `machines = [3, 2, 5]`, `target = 7`: `low = 1`, `high = 5 * 7 = 35`.
+For `s1 = "LOVE"`, `s2 = "MOVIE"`, the filled table is:
 
-| low | high | mid | products at `mid` | enough? | action |
-|-----|------|-----|-------------------|---------|--------|
-| 1 | 35 | 18 | 6 + 9 + 3 = 18 | yes | `high = 18` |
-| 1 | 18 | 9 | 3 + 4 + 1 = 8 | yes | `high = 9` |
-| 1 | 9 | 5 | 1 + 2 + 1 = 4 | no | `low = 6` |
-| 6 | 9 | 7 | 2 + 3 + 1 = 6 | no | `low = 8` |
-| 8 | 9 | 8 | 2 + 4 + 1 = 7 | yes | `high = 8` |
+```
+         ""   M   O   V   I   E
+   ""     0   1   2   3   4   5
+   L      1   1   2   3   4   5
+   O      2   2   1   2   3   4
+   V      3   3   2   1   2   3
+   E      4   4   3   2   2   2
+```
 
-Now `low == high == 8`, so the answer is **8**.
+A few cells worked out:
+
+- `dp[2][2]` (`O` vs `O`): characters match, so it equals `dp[1][1] = 1`.
+- `dp[3][3]` (`V` vs `V`): characters match, so it equals `dp[2][2] = 1`.
+- `dp[3][4]` (`V` vs `I`): they differ, so it is `1 + min(dp[2][4]=3, dp[3][3]=1, dp[2][3]=2) = 2`.
+- `dp[4][5]` (`E` vs `E`): characters match, so it equals `dp[3][4] = 2`.
+
+The bottom-right cell is the answer: **2**.
 
 ---
 
@@ -95,37 +108,30 @@ Now `low == high == 8`, so the answer is **8**.
 
 The solution was accepted on all test cases.
 
-![Accepted submission](src/accepted_factory_machines.png)
+![Accepted submission](src/accepted_edit_distance.png)
 
 ---
 
 ## Complexity
 
-Let `n` be the number of machines, `t` the target number of products and `K` the largest machine time.
+Let `n = |s1|` and `m = |s2|`.
 
-### Time: O(n log(K · t))
+### Time: O(n · m)
 
-- The search range goes from `1` to `K * t`, which is at most about `10^18`.
-- Each iteration halves the range, so binary search makes about `log2(K * t)` iterations, which is roughly **60** at most.
-- Each iteration calls `isPossible`, which loops over up to `n` machines in O(n).
-- Total: O(n) work per iteration times O(log(K · t)) iterations. With `n` up to `2 * 10^5`, that is about `1.2 * 10^7` operations, which is very fast.
+- The table has `(n + 1) * (m + 1)` cells.
+- Each cell is computed in constant time: one character comparison and at most two `Math.min` calls.
+- The base cases take O(n + m), which is negligible next to the main loops.
 
-Reading the input and finding the maximum are each O(n), which is negligible next to the search.
+For strings of length up to 5000, that is about `25 * 10^6` cell computations, which runs comfortably within the time limit.
 
-### Space: O(n)
+### Space: O(n · m)
 
-- Only the `machines` array is stored.
-- The binary search itself uses O(1) extra variables (`low`, `high`, `mid`).
-
----
-
-## Why Not Simulate Time Directly?
-
-Simulating second by second would take up to `10^18` steps, far too slow. Binary search reduces that to about 60 checks, because we only need to know whether a given time is enough, not what happens at every second in between.
+- The full 2D table is stored, so it uses `(n + 1) * (m + 1)` entries.
+- Since each entry is a `long` (8 bytes), two strings of length 5000 need about 200 MB.
 
 ---
 
-## Notes
+## Possible Optimizations
 
-- `long` is used throughout because `maxTime * target` can reach about `10^18`, which overflows `int`.
-- The initial value `Integer.MIN_VALUE` for `maxTime` is fine, since every machine time is pos
+- **Use `int` instead of `long`.** The edit distance can never exceed `max(n, m)`, so `int` is always enough. This halves the memory.
+- **Use two rolling rows.** Each row only depends on the previous row, so keeping just two rows reduces the space to **O(min(n, m))** with the same O(n · m) time. The trade-off is that you can no longer reconstruct the actual sequence of operations from the table.
