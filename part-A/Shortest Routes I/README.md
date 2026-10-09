@@ -118,9 +118,4 @@ Let `n` be the number of cities and `m` the number of flights.
 
 ---
 
-## Assumptions and Limitations
 
-- **All edge weights must be non-negative.** Dijkstra's correctness depends on a finalized distance never being improved later, which fails with negative edges. For negative weights, use **Bellman-Ford** (O(n·m)) instead.
-- The graph is **directed**: each input line adds only the edge `u -> v`. For an undirected graph, you would also add `v -> u`.
-- If a city is **unreachable** from city 1, its distance stays `Long.MAX_VALUE` and that value is printed. This problem guarantees every city is reachable, so it does not occur here.
-- `long` is used for distances because path lengths can be as large as about `10^9 * 10^5`, which overflows `int`.
