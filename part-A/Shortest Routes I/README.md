@@ -94,7 +94,7 @@ Step 4 shows the stale-entry check in action.
 
 The solution was accepted on all test cases.
 
-![Accepted submission](accepted_dijkstra.png)
+![Accepted submission](src/accepted_dijkstra.png)
 
 ---
 
