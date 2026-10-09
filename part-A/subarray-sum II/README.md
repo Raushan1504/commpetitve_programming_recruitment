@@ -91,7 +91,7 @@ Final answer: **3**
 The solution was accepted on all test cases.
 
 
-![Accepted submission](accepted_prefix_sum.png)
+![Accepted submission](src/accepted_prefix_sum.png)
 
 ---
 
